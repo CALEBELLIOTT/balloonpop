@@ -1,15 +1,43 @@
-let startButton = document.getElementById("start-button")
-let inflateButton = document.getElementById("inflate-button")
+//BUTTONS
+
+//#region GAME LOGIC AND DATA
+
 let clickCount = 0
 let height = 120
 let width = 100
 let inflationRate = 20
 let maxSize = 300
-let popCount = 0
-let gameLength = 5000
+let highestPopCount = 0
+let currentPopCount = 0
+let gameLength = 10000
 let clockId = 0
 let timeRemaining = 0
+let currentPlayer = {}
+let currentColor = "red"
+let possibleColors = ["green", "blue", "purple", "pink", "red"]
 
+function stopGame(){
+  console.log("The game is over")
+  document.getElementById("main-controls").classList.remove("hidden")
+  document.getElementById("game-controls").classList.add("hidden")
+  document.getElementById("scoreboard").classList.remove("hidden")
+  drawScoreboard()
+
+
+  clickCount = 0
+  height = 120 
+  width = 100
+
+  if(currentPopCount > currentPlayer.topScore){
+    currentPlayer.topScore = currentPopCount
+    savePlayers()
+  }
+  currentPopCount = 0 
+
+  stopClock()
+  draw()
+
+}
 
 function drawClock(){
 let countdownElement = document.getElementById("countdown")
@@ -18,12 +46,11 @@ timeRemaining -= 1000
 }
 
 function startGame(){
-
-startButton.setAttribute("disabled", "true")
-inflateButton.removeAttribute("disabled")
   startClock()
   setTimeout(stopGame, gameLength)
-
+document.getElementById("game-controls").classList.remove("hidden")
+document.getElementById("main-controls").classList.add("hidden")
+document.getElementById("scoreboard").classList.add("hidden")
 }
 
 function startClock(){
@@ -37,45 +64,118 @@ function startClock(){
 function stopClock(){
   clearInterval(clockId)
 }
+function draw(){
+  var balloonElement = document.getElementById("balloon")
+  var clickCountElement = document.getElementById("click-count")
+  let popCountElement = document.getElementById("pop-count")
+  let highPopCountElement = document.getElementById("high-pop-count")
+  let playerNameElement = document.getElementById("player-name")
+  balloonElement.style.height = height + "px"
+  balloonElement.style.width = width + "px"
+  
+  clickCountElement.innerText = clickCount.toString()
+  popCountElement.innerText = currentPopCount.toString()
+  highPopCountElement.innerText = currentPlayer.topScore.toString()
 
-
+  playerNameElement.innerText = currentPlayer.name
+}
 
 function inflate(){
   clickCount++
   height += inflationRate
   width += inflationRate
-  
+  checkBalloonPop()
+  draw()
+}
+
+function checkBalloonPop(){
   if(height >= maxSize){
     console.log("pop the balloon")
+    var balloonElement = document.getElementById("balloon")
+    balloonElement.classList.remove(currentColor)
+    getRandomColor()
+    balloonElement.classList.add(currentColor)
     height = 0
     width = 0
-    popCount ++
+    currentPopCount ++
+    // @ts-ignore
+    document.getElementById("pop-sound").play()
+
+}
+}
+
+function getRandomColor(){
+  let i = Math.floor(Math.random() * possibleColors.length);
+  currentColor = possibleColors[i]
+}
+
+
+
+
+//#endregion
+
+
+//#region LOCAL FILE SETUP, PLAYER PROFILES
+let players = []
+loadPlayers()
+drawScoreboard()
+
+
+function setPlayer(event){
+  event.preventDefault()
+  let form = event.target
+  
+  let playerName = (form.playerName.value)
+  
+  currentPlayer = players.find(player => player.name == playerName)
+  
+  if(! currentPlayer) {
+    currentPlayer = {name : playerName, topScore: 0 }
+    players.push(currentPlayer)
+    savePlayers()
   }
+  
+
+  form.reset()
+  document.getElementById("game").classList.remove("hidden")
+  form.classList.add("hidden")
   draw()
 }
 
-function draw(){
-  var balloonElement = document.getElementById("balloon")
-  var clickCountElement = document.getElementById("click-count")
-  let popCountElement = document.getElementById("pop-count")
-  
-  balloonElement.style.height = height + "px"
-  balloonElement.style.width = width + "px"
-  
-  clickCountElement.innerText = clickCount.toString()
-  popCountElement.innerText = popCount.toString()
+function changePlayer(){
+  document.getElementById("player-form").classList.remove("hidden")
+  document.getElementById("game").classList.add("hidden")
 }
 
-
-function stopGame(){
-  console.log("The game is over")
-  inflateButton.setAttribute("disabled", "true")
-  startButton.removeAttribute("disabled")
-
-  clickCount = 0
-  height = 120 
-  width = 100
-  stopClock()
-  draw()
-
+function savePlayers(){
+  window.localStorage.setItem("players", JSON.stringify(players))
+  
 }
+
+function loadPlayers(){
+  let playersData = JSON.parse(window.localStorage.getItem("players"))
+  if(playersData){
+    players = playersData
+  }
+}
+
+function drawScoreboard(){
+  let template = ""
+  players.sort((p1, p2)=> p2.topScore - p1.topScore)
+
+  players.forEach(player => {
+    template += `
+    <div class = "d-flex space-between">
+        <span>
+          <i class="fa fa-user"></i>
+          ${player.name}
+        </span>
+        <span>${player.topScore}</span>
+      </div>
+    `
+  })
+  document.getElementById("players").innerHTML = template
+}
+drawScoreboard()
+
+//#endregion 
